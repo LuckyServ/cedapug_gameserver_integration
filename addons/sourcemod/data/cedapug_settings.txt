@@ -1,0 +1,5 @@
+"cedapug"
+{
+        "apiKey"                "INSERT_API_KEY_HERE"
+        "url"           "https://cedapug.com/"
+}
