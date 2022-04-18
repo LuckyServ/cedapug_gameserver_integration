@@ -9,14 +9,16 @@ char REGION_POST_KEY[] = "players=";
 bool checkedCedapugGame = false;
 StringMap currentPlayers;
 bool isCedapugEnded = false;
+Handle hGameRuleOngoingCeda;
+Handle hGameRuleCedaLevel;
 
 public Plugin myinfo =
 {
-	name = "L4D2 CEDAPug Detect",
-	author = "Luckylock",
-	description = "Detects the start of a CEDAPug game.",
-	version = "4",
-	url = "https://github.com/LuckyServ/"
+    name = "L4D2 CEDAPug Detect",
+    author = "Luckylock",
+    description = "Detects the start of a CEDAPug game.",
+    version = "4",
+    url = "https://github.com/LuckyServ/"
 };
 
 GlobalForward cedapugStartedForward;
@@ -29,7 +31,11 @@ public void OnPluginStart()
 
     HookEvent("player_disconnect", OnPlayerDisconnectEvent);
 
-    RegAdminCmd("sm_disconnectme", OnDisconnectMe, ADMFLAG_GENERIC); 
+    RegAdminCmd("sm_disconnectme", OnDisconnectMe, ADMFLAG_GENERIC);
+
+    hGameRuleOngoingCeda = CreateConVar("l4d2_cedapug_active", "0", "1 - if there is ongoin Ceda game, 0 - if not. Will be added to public server rules. Does not have any effect on anything, needed for statistical purposes", FCVAR_NOTIFY);
+    hGameRuleCedaLevel = CreateConVar("l4d2_cedapug_level", "none", "The values are Novice, Intermediate, or Expert. Will be added to public server rules. Does not have any effect on anything, needed for statistical purposes", FCVAR_NOTIFY);
+    HookEvent("server_cvar", EventCvarChanged, EventHookMode_Pre);
 }
 
 Action OnDisconnectMe(int client, int args)
@@ -63,7 +69,8 @@ void HandlePlayerDisconnected(int client)
     {
         CPrintToChatAll("{green}CEDAPug: {default}Game ended.");
         isCedapugEnded = true;
-        CreateTimer(5.0, CallCedapugEnded); 
+        CreateTimer(5.0, CallCedapugEnded);
+        SetConVarInt(hGameRuleOngoingCeda, 0);
     }
 }
 
@@ -127,6 +134,8 @@ void GetRegionCallback(bool success, const char[] error, System2HTTPRequest requ
 
         if (IS_CEDAPUG_GAME) {
             CPrintToChatAll("{green}CEDAPug: {default}Game started ({olive}%s{default})", regionNames[region - 1]);
+            SetConVarString(hGameRuleCedaLevel, regionNames[region - 1]);
+            SetConVarInt(hGameRuleOngoingCeda, 1);
             CallCedapugStarted();
         } else if (region == -10) {
             CPrintToChatAll("{green}CEDAPug: {default}Game started on the wrong map ({olive}Unranked{default})");
@@ -163,4 +172,14 @@ Action CallCedapugEnded(Handle timer, Handle hndl)
     Action result;
     Call_StartForward(cedapugEndedForward);
     Call_Finish(result);
+}
+
+Action EventCvarChanged(Event event, const char[] name, bool dontBroadcast)
+{
+    char sBuffer[32];
+    GetEventString(event, "cvarname", sBuffer, sizeof(sBuffer), "none");
+    if (StrEqual(sBuffer, "l4d2_cedapug_active") || StrEqual(sBuffer, "l4d2_cedapug_level")) {
+        event.BroadcastDisabled = true;
+    }
+    return Plugin_Continue;
 }
