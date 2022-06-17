@@ -19,7 +19,7 @@ int THRESHOLD_IGNORE = 60;
 int THRESHOLD_GAME_ENDED = 120;
 
 // Threhold for banning a player
-int THRESHOLD_BAN = 240;
+int THRESHOLD_BAN = 240; // 240
 
 // Threshold to warn a player about to be banned
 int THRESHOLD_WARN = 30;
@@ -39,6 +39,7 @@ char allPlayers[64][STEAMID_SIZE];
 
 /* CONSTANTS */
 char REASON_GAME_LEFT[MAX_STR_LEN] = "GAME_LEFT";
+char REASON_GAME_AFK[MAX_STR_LEN] = "GAME_AFK";
 
 /* AFK */
 float g_fButtonTime[MAXPLAYERS+1];
@@ -153,7 +154,7 @@ Action DisconnectCheck(Handle timer, Handle hndl)
         for (int i = 0; i < playersToBan.Length; i++)
         {
             playersToBan.GetString(i, steamId, STEAMID_SIZE);
-            BanPlayer(steamId, REASON_GAME_LEFT);
+            BanPlayer(steamId, GetClientIdFromSteamId(steamId) == 0 ? REASON_GAME_LEFT : REASON_GAME_AFK, "You have been kicked for being inactive");
         }
     }
 
@@ -167,7 +168,7 @@ void WarnPlayerDisconnect(const char[] steamId) {
     int clientId = GetClientIdFromSteamId(steamId);
     
     if (clientId != 0) {
-        CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to be banned for being afk or in spectator.")
+        CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to be banned for being inactive or in spectator.")
     }
 }
 
@@ -261,13 +262,13 @@ JSON_Array GetAllPlayers() {
 
 /* GENERAL */
 
-void BanPlayer(const char[] steamId, const char[] reason)
+void BanPlayer(const char[] steamId, const char[] reason, const char[] kickReason)
 {
     int clientId = GetClientIdFromSteamId(steamId);
 
     if (clientId != 0)
     {
-        KickClient(clientId, "You have been kicked for being afk");
+        KickClient(clientId, kickReason);
     }
 
     char dataToSend[MAX_DATA_SIZE];
