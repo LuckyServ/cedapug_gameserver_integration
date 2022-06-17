@@ -21,6 +21,12 @@ int THRESHOLD_GAME_ENDED = 120;
 // Threhold for banning a player
 int THRESHOLD_BAN = 240;
 
+// Threshold to warn a player about to be banned
+int THRESHOLD_WARN = 30;
+
+// AFK duration in seconds
+int AFK_DURATION = 10;
+
 /* STARTBAN POLICY */
 Handle currentNewGameTimer = INVALID_HANDLE;
 bool isRoundLive = false;
@@ -34,12 +40,15 @@ char allPlayers[64][STEAMID_SIZE];
 /* CONSTANTS */
 char REASON_GAME_LEFT[MAX_STR_LEN] = "GAME_LEFT";
 
+/* AFK */
+float g_fButtonTime[MAXPLAYERS+1];
+
 public Plugin myinfo =
 {
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "6",
+    version = "7",
     url = "https://cedapug.com/"
 };
 
@@ -47,6 +56,8 @@ public void OnPluginStart() {
     RegAdminCmd("sm_startban", OnStartBan, ADMFLAG_GENERIC); 
     activePlayers = CreateTrie();
     currentNewGameTimer = CreateTimer(480.0, NewGameCreatedTookTooLong);
+    AddCommandListener(Say_Callback, "say");
+    AddCommandListener(Say_Callback, "say_team");
 }
 
 /* ANTI-VOTEKICKING */
@@ -117,12 +128,16 @@ Action DisconnectCheck(Handle timer, Handle hndl)
             disconnectCount += TIME_DISCONNECT_CHECK;
             activePlayers.SetValue(steamId, disconnectCount, true);
 
-            if (disconnectCount > THRESHOLD_GAME_ENDED)
+            if (disconnectCount >= THRESHOLD_GAME_ENDED)
             {
                 gameEndedCount++;
             }
 
-            if (disconnectCount > THRESHOLD_BAN) {
+            if (THRESHOLD_BAN - disconnectCount <= THRESHOLD_WARN) {
+                WarnPlayerDisconnect(steamId);
+            }
+
+            if (disconnectCount >= THRESHOLD_BAN) {
                 activePlayers.Remove(steamId);
                 playersToBan.PushString(steamId);
             }
@@ -148,11 +163,19 @@ Action DisconnectCheck(Handle timer, Handle hndl)
     return Plugin_Continue;
 }
 
-bool IsSteamIdPlaying(const char[] steamId)
+void WarnPlayerDisconnect(const char[] steamId) {
+    int clientId = GetClientIdFromSteamId(steamId);
+    
+    if (clientId != 0) {
+        CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to be banned for being afk or in spectator.")
+    }
+}
+
+int GetClientIdFromSteamId(const char[] steamId)
 {
     if (strlen(steamId) == 0)
     {
-        return false;
+        return 0;
     }
 
     char authId[MAX_STR_LEN];
@@ -164,12 +187,18 @@ bool IsSteamIdPlaying(const char[] steamId)
 
             if (StrEqual(steamId, authId) && IsHumanPlaying(client))
             {
-                return true;
+                return client;
             }
         }
     }
 
-    return false;
+    return 0;
+}
+
+bool IsSteamIdPlaying(const char[] steamId)
+{
+    int clientId = GetClientIdFromSteamId(steamId);
+    return clientId != 0 && IsHumanPlaying(clientId) && !IsPlayerAfk(clientId);
 }
 
 void GetActivePlayers()
@@ -234,6 +263,13 @@ JSON_Array GetAllPlayers() {
 
 void BanPlayer(const char[] steamId, const char[] reason)
 {
+    int clientId = GetClientIdFromSteamId(steamId);
+
+    if (clientId != 0)
+    {
+        KickClient(clientId, "You have been kicked for being afk");
+    }
+
     char dataToSend[MAX_DATA_SIZE];
     strcopy(dataToSend, sizeof(dataToSend), "steamId=");
     StrCat(dataToSend, sizeof(dataToSend), steamId);
@@ -262,4 +298,42 @@ public OnRoundIsLive()
 {
     GetActivePlayers();
     isRoundLive = true;
+}
+
+public Action Say_Callback(int client, const char[] command, int argc)
+{
+    SetEngineTime(client);
+    return Plugin_Continue;
+}
+
+public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed, int mouse[2])
+{
+    if (IsHuman(client))
+    {
+        static int iLastMouse[MAXPLAYERS+1][2];
+        
+        // Mouse Movement Check
+        if (mouse[0] != iLastMouse[client][0] || mouse[1] != iLastMouse[client][1])
+        {
+            iLastMouse[client][0] = mouse[0];
+            iLastMouse[client][1] = mouse[1];
+            SetEngineTime(client);
+        }
+        else if (buttons || impulse)
+        {
+            SetEngineTime(client);
+        }
+    }
+    
+    return Plugin_Continue;
+}
+
+void SetEngineTime(int client)
+{
+	g_fButtonTime[client] = GetEngineTime();
+}
+
+bool IsPlayerAfk(int client)
+{
+    return GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
 }
