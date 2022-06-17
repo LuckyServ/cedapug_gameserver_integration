@@ -30,6 +30,7 @@ int AFK_DURATION = 10;
 /* STARTBAN POLICY */
 Handle currentNewGameTimer = INVALID_HANDLE;
 bool isRoundLive = false;
+bool isPaused = false;
 
 /* ENDPOINTS */
 char PLAYERS_POST_KEY[] = "players=";
@@ -49,7 +50,7 @@ public Plugin myinfo =
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "7",
+    version = "8",
     url = "https://cedapug.com/"
 };
 
@@ -99,6 +100,16 @@ Action CallvoteKickCheck(int client, const char[] command, int argc)
 }
 
 /* DISCONNECT POLICY */
+
+public void OnPause()
+{
+    isPaused = true;
+}
+
+public void OnUnpause()
+{
+    isPaused = false;
+}
 
 Action DisconnectCheck(Handle timer, Handle hndl)
 {
@@ -336,5 +347,5 @@ void SetEngineTime(int client)
 
 bool IsPlayerAfk(int client)
 {
-    return GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
+    return !isPaused && GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
 }
