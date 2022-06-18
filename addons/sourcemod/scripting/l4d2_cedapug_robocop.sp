@@ -50,7 +50,7 @@ public Plugin myinfo =
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "8",
+    version = "9",
     url = "https://cedapug.com/"
 };
 
@@ -197,7 +197,7 @@ int GetClientIdFromSteamId(const char[] steamId)
         {
             GetClientAuthId(client, AuthId_SteamID64, authId, STEAMID_SIZE, false);
 
-            if (StrEqual(steamId, authId) && IsHumanPlaying(client))
+            if (StrEqual(steamId, authId))
             {
                 return client;
             }
@@ -347,5 +347,5 @@ void SetEngineTime(int client)
 
 bool IsPlayerAfk(int client)
 {
-    return !isPaused && GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
+    return !isPaused && IsPlayerAlive(client) && GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
 }
