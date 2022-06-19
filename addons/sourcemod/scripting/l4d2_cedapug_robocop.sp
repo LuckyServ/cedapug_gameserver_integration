@@ -16,7 +16,7 @@ int THRESHOLD_IGNORE = 60;
 
 // Threhold at which if more than N players 
 // are past remove all active players
-int THRESHOLD_GAME_ENDED = 120;
+int THRESHOLD_GAME_ENDED = 180;
 
 // Threhold for banning a player
 int THRESHOLD_BAN = 240; // 240
@@ -50,7 +50,7 @@ public Plugin myinfo =
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "9",
+    version = "10",
     url = "https://cedapug.com/"
 };
 
@@ -156,7 +156,7 @@ Action DisconnectCheck(Handle timer, Handle hndl)
         }
     }
 
-    if (gameEndedCount >= 3)
+    if (gameEndedCount >= 4)
     {
         activePlayers.Clear();
     }
