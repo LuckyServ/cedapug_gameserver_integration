@@ -53,7 +53,7 @@ public Plugin myinfo =
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "11",
+    version = "12",
     url = "https://cedapug.com/"
 };
 
@@ -163,6 +163,7 @@ Action DisconnectCheck(Handle timer, Handle hndl)
 
     if (gameEndedCount >= 4)
     {
+        CPrintToChatAll("{green}CEDAPug: {default}Robocop was about to ban too many people. It is now inactive for the rest of the round.")
         activePlayers.Clear();
     }
     else
@@ -374,7 +375,7 @@ bool IsPlayerAfk(int client)
 {
     if (isReadyUp)
     {
-        return !isPlayerReady[client] && IsPlayerAlive(client);
+        return GetPlayingHumanCount() == 8 && !isPlayerReady[client] && IsPlayerAlive(client);
     }
 
     return !isPaused && IsPlayerAlive(client) && GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
