@@ -30,6 +30,7 @@ int AFK_DURATION = 10;
 /* STARTBAN POLICY */
 Handle currentNewGameTimer = INVALID_HANDLE;
 bool isRoundLive = false;
+bool isReadyUp = false;
 bool isPaused = false;
 
 /* ENDPOINTS */
@@ -41,16 +42,18 @@ char allPlayers[64][STEAMID_SIZE];
 /* CONSTANTS */
 char REASON_GAME_LEFT[MAX_STR_LEN] = "GAME_LEFT";
 char REASON_GAME_AFK[MAX_STR_LEN] = "GAME_AFK";
+char REASON_GAME_READYUP[MAX_STR_LEN] = "GAME_READYUP";
 
 /* AFK */
 float g_fButtonTime[MAXPLAYERS+1];
+bool isPlayerReady[MAXPLAYERS+1];
 
 public Plugin myinfo =
 {
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "10",
+    version = "11",
     url = "https://cedapug.com/"
 };
 
@@ -60,6 +63,8 @@ public void OnPluginStart() {
     currentNewGameTimer = CreateTimer(480.0, NewGameCreatedTookTooLong);
     AddCommandListener(Say_Callback, "say");
     AddCommandListener(Say_Callback, "say_team");
+    HookEvent("round_start", RoundStart_Event, EventHookMode_Pre);
+    SetAllPlayersUnready();
 }
 
 /* ANTI-VOTEKICKING */
@@ -165,7 +170,19 @@ Action DisconnectCheck(Handle timer, Handle hndl)
         for (int i = 0; i < playersToBan.Length; i++)
         {
             playersToBan.GetString(i, steamId, STEAMID_SIZE);
-            BanPlayer(steamId, GetClientIdFromSteamId(steamId) == 0 ? REASON_GAME_LEFT : REASON_GAME_AFK, "You have been kicked for being inactive");
+
+            if (GetClientIdFromSteamId(steamId) == 0)
+            {
+                BanPlayer(steamId, REASON_GAME_LEFT, "You left the game without finding a sub");
+            }
+            else if (isReadyUp)
+            {
+                BanPlayer(steamId, REASON_GAME_READYUP, "You failed to ready up in time");
+            }
+            else 
+            {
+                BanPlayer(steamId, REASON_GAME_AFK, "You have been kicked for being inactive");
+            }
         }
     }
 
@@ -179,7 +196,14 @@ void WarnPlayerDisconnect(const char[] steamId) {
     int clientId = GetClientIdFromSteamId(steamId);
     
     if (clientId != 0) {
-        CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to be banned for being inactive or in spectator.")
+        if (isReadyUp)
+        {
+            CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to banned for not readying up in time.")
+        }
+        else
+        {
+            CPrintToChat(clientId, "{green}CEDAPug: {default}You are about to be banned for being inactive or in spectator.")
+        }
     }
 }
 
@@ -310,6 +334,7 @@ public OnRoundIsLive()
 {
     GetActivePlayers();
     isRoundLive = true;
+    isReadyUp = false;
 }
 
 public Action Say_Callback(int client, const char[] command, int argc)
@@ -347,5 +372,44 @@ void SetEngineTime(int client)
 
 bool IsPlayerAfk(int client)
 {
+    if (isReadyUp)
+    {
+        return !isPlayerReady[client] && IsPlayerAlive(client);
+    }
+
     return !isPaused && IsPlayerAlive(client) && GetEngineTime() - g_fButtonTime[client] > AFK_DURATION;
+}
+
+public void OnPlayerReady(int client)
+{
+	isPlayerReady[client] = true;
+}
+
+public void OnPlayerUnready(int client)
+{
+	isPlayerReady[client] = false;
+}
+
+public void OnConfigsExecuted()
+{
+	OnReadyUp();
+}
+
+public void RoundStart_Event(Event event, const char[] name, bool dontBroadcast)
+{
+    OnReadyUp();
+}
+
+void OnReadyUp()
+{
+    SetAllPlayersUnready();
+    isReadyUp = true;
+}
+
+void SetAllPlayersUnready()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		isPlayerReady[client] = false;
+	}
 }
