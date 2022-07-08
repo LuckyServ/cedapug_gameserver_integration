@@ -35,7 +35,7 @@ bool isPaused = false;
 
 /* ENDPOINTS */
 char PLAYERS_POST_KEY[] = "players=";
-char BAN_ENDPOINT[] = "ban";
+char BAN_ENDPOINT[] = "ban2";
 char START_BAN_ENDPOINT[] = "startban";
 char allPlayers[64][STEAMID_SIZE];
 
@@ -56,7 +56,7 @@ public Plugin myinfo =
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "13",
+    version = "14",
     url = "https://cedapug.com/"
 };
 
@@ -189,12 +189,6 @@ Action DisconnectCheck(Handle timer, Handle hndl)
                 BanPlayer(steamId, REASON_GAME_AFK, "You have been kicked for being inactive");
             }
         }
-
-        if (playersToBan.Length > 0)
-        {
-            CallCedapugBan();
-            activePlayers.Clear();
-        }
     }
 
     delete playersToBan; 
@@ -322,7 +316,24 @@ void BanPlayer(const char[] steamId, const char[] reason, const char[] kickReaso
     StrCat(dataToSend, sizeof(dataToSend), steamId);
     StrCat(dataToSend, sizeof(dataToSend), "&reason=");
     StrCat(dataToSend, sizeof(dataToSend), reason);
-    Cedapug_SendPostRequest(BAN_ENDPOINT, dataToSend, PrintResponseCallback);
+    Cedapug_SendPostRequest(BAN_ENDPOINT, dataToSend, BanCallback);
+}
+
+void BanCallback(bool success, const char[] error, System2HTTPRequest request, System2HTTPResponse response, HTTPRequestMethod method) {
+    char[] content = new char[response.ContentLength + 1];
+    char[] message = new char[response.ContentLength + 1];
+    response.GetContent(content, response.ContentLength + 1); 
+    JSON_Object obj = json_decode(content);
+    bool isBanned = obj.GetBool("isBanned");
+    obj.GetString("message", message, response.ContentLength + 1);
+    json_cleanup_and_delete(obj);
+    
+    if (isBanned)
+    {
+        CPrintToChatAll(message);
+        CallCedapugBan();
+        activePlayers.Clear();
+    }
 }
 
 public void OnCedapugStarted(int regionArg)

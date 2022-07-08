@@ -15,7 +15,7 @@ public Plugin myinfo =
 	name = "L4D2 CEDAPug Detect",
 	author = "Luckylock",
 	description = "Detects the start of a CEDAPug game.",
-	version = "5",
+	version = "6",
 	url = "https://github.com/LuckyServ/"
 };
 
@@ -28,13 +28,14 @@ public void OnPluginStart()
     cedapugEndedForward = new GlobalForward("OnCedapugEnded", ET_Event, Param_Cell);
 
     HookEvent("player_disconnect", OnPlayerDisconnectEvent);
-
-    RegAdminCmd("sm_disconnectme", OnDisconnectMe, ADMFLAG_GENERIC); 
+    RegAdminCmd("sm_cedaping", OnCedaPing, ADMFLAG_GENERIC); 
 }
 
-Action OnDisconnectMe(int client, int args)
+Action OnCedaPing(int client, int args)
 {
-    HandlePlayerDisconnected(client);
+    PrintToChatAll("Attempting to ping cedapug.com with the given API key...");
+    Cedapug_SendPostRequest("cedaping", "", PrintResponseCallback);
+    return Plugin_Handled;
 }
 
 public Action OnPlayerDisconnectEvent(Handle:event, const String:name[], bool:dontBroadcast) 
@@ -152,9 +153,12 @@ public void OnCedapugEnded()
 
 public void OnCedapugBan()
 {
-    CPrintToChatAll("{green}CEDAPug: {default}Game ended.");
-    isCedapugEnded = true;
-    CreateTimer(5.0, CallCedapugEnded); 
+    if (!isCedapugEnded)
+    {
+        CPrintToChatAll("{green}CEDAPug: {default}Game ended.");
+        isCedapugEnded = true;
+        CreateTimer(5.0, CallCedapugEnded); 
+    }
 }
 
 void CallCedapugStarted()
