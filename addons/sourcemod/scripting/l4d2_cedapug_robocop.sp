@@ -48,16 +48,20 @@ char REASON_GAME_READYUP[MAX_STR_LEN] = "GAME_READYUP";
 float g_fButtonTime[MAXPLAYERS+1];
 bool isPlayerReady[MAXPLAYERS+1];
 
+/* FORWARDS */
+GlobalForward cedapugBanForward;
+
 public Plugin myinfo =
 {
     name = "L4d2 CEDAPug Robocop",
     author = "Luckylock",
     description = "Provides automatic moderation for cedapug.",
-    version = "12",
+    version = "13",
     url = "https://cedapug.com/"
 };
 
 public void OnPluginStart() {
+    cedapugBanForward = new GlobalForward("OnCedapugBan", ET_Event, Param_Cell);
     RegAdminCmd("sm_startban", OnStartBan, ADMFLAG_GENERIC); 
     activePlayers = CreateTrie();
     currentNewGameTimer = CreateTimer(480.0, NewGameCreatedTookTooLong);
@@ -184,6 +188,12 @@ Action DisconnectCheck(Handle timer, Handle hndl)
             {
                 BanPlayer(steamId, REASON_GAME_AFK, "You have been kicked for being inactive");
             }
+        }
+
+        if (playersToBan.Length > 0)
+        {
+            CallCedapugBan();
+            activePlayers.Clear();
         }
     }
 
@@ -413,4 +423,11 @@ void SetAllPlayersUnready()
 	{
 		isPlayerReady[client] = false;
 	}
+}
+
+Action CallCedapugBan()
+{
+    Action result;
+    Call_StartForward(cedapugBanForward);
+    Call_Finish(result);
 }

@@ -15,7 +15,7 @@ public Plugin myinfo =
 	name = "L4D2 CEDAPug Detect",
 	author = "Luckylock",
 	description = "Detects the start of a CEDAPug game.",
-	version = "4",
+	version = "5",
 	url = "https://github.com/LuckyServ/"
 };
 
@@ -148,6 +148,13 @@ public void OnCedapugStarted(int regionArg)
 public void OnCedapugEnded()
 {
     // Nothing
+}
+
+public void OnCedapugBan()
+{
+    CPrintToChatAll("{green}CEDAPug: {default}Game ended.");
+    isCedapugEnded = true;
+    CreateTimer(5.0, CallCedapugEnded); 
 }
 
 void CallCedapugStarted()
